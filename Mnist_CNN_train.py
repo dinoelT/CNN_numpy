@@ -63,9 +63,9 @@ print(train_data.shape)
 print(test_data.shape)
 
 #Init layers
-conv1 = Conv3x3(8, imgShape, batchSize=1,lRate=0.001, depth = 1)
+conv1 = Conv3x3(8, imgShape, batchSize=1,lRate=0.005, depth = 1)
 maxpool1 = Maxpool()
-conv2 = Conv3x3(8, (8,1,13,13),batchSize=1,lRate=0.001, depth = 1)
+conv2 = Conv3x3(8, (8,1,13,13),batchSize=1,lRate=0.005, depth = 1)
 maxpool2 = Maxpool()
 #After Maxpool, the output is(8x8x6x6) =  2304
 fc1 = FC(2304, 200, 0.001, activation = 'leaky_relu')
@@ -99,7 +99,7 @@ with h5py.File('CNN_Checkpoints/savedMnistDigit2_sp.h5','r') as f:
     fc2.W = np.array(f.get('FC2_W'))
     fc2.B = np.array(f.get('FC2_B'))
     
-errAvg = 2.4
+errAvg = 2.2
 
 f= open("error.txt","w+")
 
@@ -155,7 +155,7 @@ for i,img in enumerate(train_data, start=1001):
     
     out = softmax.backprop(dLdOut)
 
-    out = fc2.backprop(-out)
+    out = fc2.backprop(out)
     
     out = fc1.backprop(out).reshape((64,1,6,6))
     

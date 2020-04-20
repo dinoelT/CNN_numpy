@@ -9,27 +9,26 @@ import math
 
 class FC:
     
-    def __init__(self, nrInputs, nrOutputs, learningRate,batchSize = 5,  activation = 'relu'):
+    def __init__(self, nrInputs, nrOutputs, learningRate,batchSize = 1,  activation = 'relu'):
         
         self.batchSize = batchSize
         self.countPasses = 0
         
         (self.nrOutputs, self.nrInputs) = (nrOutputs, nrInputs)
-        self.W = np.random.randn(nrOutputs, nrInputs) / math.sqrt(nrInputs/2)
         
+        self.W = np.random.randn(nrOutputs, nrInputs)/ math.sqrt(1.1*nrInputs/2)
+
         self.B = np.random.randn(nrOutputs) / math.sqrt(nrInputs/2)
-# =============================================================================
-#         self.W = np.around(self.W, 1)
-#         self.B = np.around(self.B, 1)
-# =============================================================================
         
         self.lr = learningRate
         self.activation = activation
         
         self.dLdW = np.zeros(self.W.shape)
         self.dLdB = np.zeros(self.B.shape)
-        #print("W:\n",self.W)
-        #print("B:\n",self.B)
+# =============================================================================
+#         print("W:\n",self.W)
+#         print("B:\n",self.B)
+# =============================================================================
                
     def Relu(self, x, deriv = 'False'):
         if(deriv == 'False'):
@@ -176,64 +175,3 @@ class FC:
 #     #fc1.printWeights()
 # =============================================================================
 
-# =============================================================================
-# np.random.seed(3)
-#      
-# batch = 1
-# 
-# fc1 = FC(2,4, 0.01, batchSize = batch, activation = 'relu')
-# fc2 = FC(4,1, 0.01, batchSize = batch, activation = 'relu')
-# 
-# inp = np.array([[0,0],
-#                 [0,1],
-#                 [1,0],
-#                 [1,1]])
-# 
-#     
-# correct = np.array([0,0,0,1])
-# 
-# nrPoints = inp.shape[0]
-#     
-# lossAvg = 0
-# lossData = list()
-# import matplotlib.pyplot as plt
-# 
-# #Calculate average error
-# for i in range(inp.shape[0]):
-#     out = fc1.forward(inp[i])
-#     out = fc2.forward(out)
-#     loss =  correct[i] - out
-#     lossAvg += loss
-#     
-# lossAvg /= inp.shape[0]
-# print(lossAvg)
-# 
-# for i in range(1):
-#     out = fc1.forward(inp[i%nrPoints])
-#     out = fc2.forward(out)
-#     #print(out)
-#     loss =  correct[i%nrPoints] - out
-#     lossAvg = 0.99 * loss + 0.01 * loss
-#     if(i % 50 == 0):
-#         lossData.append(lossAvg)
-#         #print(lossAvg)
-#         
-# # =============================================================================
-# #         plt.plot(lossData)
-# #         plt.draw()
-# #         plt.pause(0.5)
-# # =============================================================================
-#         #print("Loss:\n",lossAvg)
-#         
-#     out = fc2.backprop(loss)
-#     fc1.backprop(out)
-#     
-# print("Final Results:")
-# for i in range(nrPoints):
-#     out = fc1.forward(inp[i])
-#     out = fc2.forward(out) 
-#     print(i,") ",out)
-# 
-# print("Correct outputs\n", correct)
-# =============================================================================
-    

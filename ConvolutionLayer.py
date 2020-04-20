@@ -5,21 +5,17 @@ Created on Sat Dec 21 23:49:23 2019
 @author: Dinoel
 """
 import numpy as np
+from math import sqrt
 
 class Conv3x3:
     
     def __init__(self, nrOfFilters, inputShape, batchSize = 1, lRate=0.001, depth = 3):
-        #initialize filters
+        #Initialize filters
         #See Kaiming Initialization
-        #np.random.seed(0)
         self.nrOfFilters = nrOfFilters
         self.depth = depth
-        #self.W = np.random.randn(nrOfFilters, self.depth ,3,3) / math.sqrt(27/2)
-        self.W = np.random.randn(nrOfFilters, self.depth ,3,3) / 9
-        #self.W = np.arange(nrOfFilters * self.depth *3*3).reshape(nrOfFilters, self.depth ,3,3)
-        #print("Filter: \n",self.W)
-        #self.W = np.random.randint(1,3, nrOfFilters * self.depth * 3 * 3).reshape(nrOfFilters, self.depth ,3,3)
-        #print("Filter: \n",self.W)
+        self.W = np.random.randn(nrOfFilters, self.depth ,3,3) / sqrt(9*self.depth/2)
+
         self.dLdW = np.zeros(self.W.shape)
         self.lRate = lRate
         
@@ -184,7 +180,6 @@ class Conv3x3:
 # print("Success")
 # =============================================================================
 
-
 # =============================================================================
 # print("1")
 # inp = np.arange(16).reshape((1,1,4,4))
@@ -199,8 +194,6 @@ class Conv3x3:
 # 
 # conv.backprop(out/2)
 # =============================================================================
-
-
 
 # =============================================================================
 # inputShape = (nr,d,y,x) = (2,1,4,4)
@@ -229,38 +222,18 @@ class Conv3x3:
 #     inpB = conv.backprop(loss)
 # =============================================================================
 
-
-
-
 # =============================================================================
-# inp = np.arange(150).reshape((2,3,5,5))/150
-# #print("Input:",inp)
-# 
-# conv = Conv3x3(3, 0.01, depth = 3)
-# finalResult = conv.forward(inp)*2
-# 
-# for i in range(10000):  
-#     out = conv.forward(inp)
-#     #print("Output shape:", out.shape)
-#     error = finalResult - out
-#     print(np.sum(error))    
-#     resp = conv.calc_dLdW(error)
+# #Test filter
+# self.filter[0]=[[[-1,-1,-1],
+#                         [2,2,2],
+#                         [-1,-1,-1]],
+#                            
+#                            [[-1,-1,-1],
+#                         [2,2,2],
+#                         [-1,-1,-1]],
+#                            
+#                            [[-1,-1,-1],
+#                         [2,2,2],
+#                         [-1,-1,-1]]]
+# self.filter[0] = self.filter[0].transpose(0,2,1)
 # =============================================================================
-
-
-
-
-'''
-self.filter[0]=[[[-1,-1,-1],
-                        [2,2,2],
-                        [-1,-1,-1]],
-                           
-                           [[-1,-1,-1],
-                        [2,2,2],
-                        [-1,-1,-1]],
-                           
-                           [[-1,-1,-1],
-                        [2,2,2],
-                        [-1,-1,-1]]]
-self.filter[0] = self.filter[0].transpose(0,2,1)
-'''
