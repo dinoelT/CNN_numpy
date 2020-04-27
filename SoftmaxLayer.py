@@ -27,8 +27,9 @@ class Softmax:
 
             dLdInput = (-self.inputArray * self.inputArray[i]) / (S**2)
             dLdInput[i] = self.inputArray[i] * (S - self.inputArray[i])/(S**2)
-            
-            dLdInput = -dLdInput/self.output[i] 
+            #print("dLdInput:",dLdInput)
+            dLdInput = -dLdInput/self.output[i]
+            #print(self.output[i])
             return dLdInput
         
 

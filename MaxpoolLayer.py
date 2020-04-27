@@ -42,7 +42,6 @@ class Maxpool:
         return out
     
     def backprop(self, dLdOut):
-        #(depthDim, yDim, xDim) = dLdOut.shape
         
         dLdInput = np.zeros(self.inputVal.shape)
         

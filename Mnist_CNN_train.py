@@ -62,6 +62,33 @@ with h5py.File('mnist_dataset.h5','r') as f:
 print(train_data.shape)
 print(test_data.shape)
 
+
+#Calculate the Standard Deviation of the inputs
+    
+#squish between 0..1
+train_data /= 80
+train_data -= 0.41
+
+# =============================================================================
+# avgSD = 0
+# avgMean = 0
+# 
+# for img in train_data[:2000]:
+#     avgSD += np.std(img[1:785])
+# 
+# for img in train_data[:2000]:
+#     avgMean += np.mean(img[1:785])
+# print("Mean Standard Deviation:")
+# avgSD /= 2000
+# print(avgSD)
+# 
+# print("Mean Mean:")
+# avgMean /= 2000
+# print(avgMean)
+# =============================================================================
+
+
+
 #Init layers
 conv1 = Conv3x3(8, imgShape, batchSize=1,lRate=0.005, depth = 1)
 maxpool1 = Maxpool()
