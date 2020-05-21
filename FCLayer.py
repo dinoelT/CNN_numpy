@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Sun May  3 10:43:07 2020
+
+@author: Dinoel
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Wed Feb 26 19:56:16 2020
 Fully Conected Layer 
 @author: Dinoel
@@ -7,11 +14,16 @@ Fully Conected Layer
 import numpy as np
 
 class FC:
+    '''
+    beta - constant for optimizer updates
+    * none -> beta not used
+    * momentum -> beta used
+    '''
     
-    def __init__(self, nrInputs, nrOutputs, batchSize = 1):
+    def __init__(self, nrInputs, nrOutputs, optimizer = 'none', beta1 = 0.9, beta2 = 0.01, batchSize = 1):
         
         self.batchSize = batchSize
-        self.countPasses = 0
+        self.optimizer = np.char.lower(optimizer)
         
         (self.nrOutputs, self.nrInputs) = (nrOutputs, nrInputs)
         
@@ -23,50 +35,86 @@ class FC:
         self.dLdW = np.zeros(self.W.shape)
         self.dLdB = np.zeros(self.B.shape)
         
-    
+        #Init optimizer values
+        self.VdW = np.zeros(self.W.shape)
+        self.VdB = np.zeros(self.B.shape)
+  
+        #Init optimizer values
+        self.SdW = np.zeros(self.W.shape)
+        self.SdB = np.zeros(self.B.shape)
+        
+        self.beta1 = beta1
+        self.beta2 = beta2
+        
+        self.iter_count = 1
+        
+        
     def forward(self, inputArray):
-        assert (inputArray.size == self.W[0].size),"FC: Incorrect nr of inputs"
 
         self.lastInput = inputArray
         
-        self.out = np.dot(self.W, inputArray) + self.B      
-        #print("Out:\n",self.out)
+        self.out = np.tensordot(self.W, inputArray, axes = (1,1)).T + self.B      
+
         return self.out   
     
     #The function calculates the derivatives with respect to the dLdOut loss
-    def backprop(self, dLdOut, lr, test = '0'):
+    def backprop(self, dLdOut, lr):
+        #from arrayToExcel import ArrayToExcel
         
-        self.countPasses += 1 
-        
-        temp_dLdW = np.zeros((self.W.size, dLdOut.size))
+        #excel = ArrayToExcel()
+        temp_dLdW = np.zeros((self.batchSize, self.W.size, dLdOut[0].size))
         
         step = self.nrInputs
-        
-        for n in range(dLdOut.size):
-            temp_dLdW[n*step:(n+1)*step, n] = self.lastInput
-                
-        self.dLdW += np.dot(temp_dLdW, dLdOut).reshape(self.W.shape)
-        self.dLdB += np.dot( np.identity(self.nrOutputs) , dLdOut) 
-        
-        dLdX = np.dot(self.W.T, dLdOut)
-        
-        if(test == '1'):
-            print("dLdZ:",self.dLdZ)
-            print("dLdW:\n",self.dLdW)
-            print("dLdX:\n",self.dLdX)
-            print("dLdB:", self.dLdB)
-        
-        #print(self.countPasses," Calculated")
-        
-        if(self.countPasses == self.batchSize):          
-            #Update values
+        #print("Last input:\n", self.lastInput)
+        for n in range(self.nrOutputs):
+             temp_dLdW[:,n*step:(n+1)*step, n] = self.lastInput
+        #print("temp_dLdW\n",temp_dLdW)
+        #excel.write(dLdOut,"dLdOut")
+        #excel.write(temp_dLdW[0],"temp_dLdW")
+        #excel.write(temp_dLdW[1])
+        self.dLdW = np.tensordot(temp_dLdW, dLdOut, axes = ([0,2],[0,1])).reshape(self.W.shape)
+        #print("dLdW:\n",self.dLdW)
+        #excel.write(self.dLdW, "dLdW")
+        self.dLdB = np.sum( np.dot( np.identity(self.nrOutputs) , dLdOut.T), axis = 1) 
+        #excel.write(self.dLdB, "dLdB")
+        #print("dLdB:\n",self.dLdB)
+        dLdX = np.tensordot(self.W, dLdOut, axes = (0,1)).T
+        #excel.save("fc_sm_text.xls")
+        #Update values
+            
+        if(self.optimizer == 'none'):
             self.W -= self.dLdW * lr
             self.B -= self.dLdB * lr
             
-            self.dLdW = np.zeros(self.W.shape)
-            self.dLdB = np.zeros(self.B.shape)
+        elif(self.optimizer == 'momentum'):
+            self.VdW = self.VdW * self.beta1 + (1 - self.beta1)*self.dLdW
+            self.VdB = self.VdB * self.beta1 + (1 - self.beta1)*self.dLdB                
+            
+            self.W -= self.VdW * lr
+            self.B -= self.VdB * lr
 
-            self.countPasses = 0   
+        elif(self.optimizer == 'rmsprop'):
+            self.SdW = self.SdW * self.beta2 + (1 - self.beta2)*np.power(self.dLdW,2)
+            self.SdB = self.SdB * self.beta2 + (1 - self.beta2)*np.power(self.dLdB,2)                   
+ 
+            self.W -= (self.dLdW * lr) / np.sqrt(self.SdW)
+            self.B -= (self.dLdB * lr) / np.sqrt(self.SdB)
+        
+        elif(self.optimizer == 'adam'):
+            self.VdW = self.VdW * self.beta1 + (1 - self.beta1)*self.dLdW
+            self.VdB = self.VdB * self.beta1 + (1 - self.beta1)*self.dLdB 
+
+            self.SdW = self.SdW * self.beta2 + (1 - self.beta2)*np.power(self.dLdW,2)
+            self.SdB = self.SdB * self.beta2 + (1 - self.beta2)*np.power(self.dLdB,2) 
+            
+            #Perform Bias Correction
+            self.VdW = self.VdW/(1 - self.beta1**self.iter_count)
+            self.VdB = self.VdB/(1 - self.beta1**self.iter_count)
+
+            self.SdW = self.SdW/(1 - self.beta1**self.iter_count)
+            self.SdB = self.SdB/(1 - self.beta1**self.iter_count)            
+            
+            
         return dLdX
     
     def printWeights(self):
@@ -80,6 +128,51 @@ class FC:
         print("Weights shape: ", self.W.shape)
         print("Bias shape: ",self.B.shape)
         print("-----------------------------------")        
+
+# =============================================================================
+# from arrayToExcel import ArrayToExcel
+# 
+# #for a nn 4x6 inputs and 4x2 outputs
+# np.random.seed(1)
+# 
+# inp = np.random.randn(3,10)
+# 
+# FC1 = FC(10,6, batchSize = 3)
+# FC2 = FC(6,2, batchSize = 3)
+# 
+# out = FC1.forward(inp)
+# out = FC2.forward(out)
+# correct = np.zeros(out.shape)
+# correct[0] = out[0]/2
+# correct[1] = out[1]*2
+# correct[2] = out[2]*0.25
+# 
+# for i in range(10000):
+#     out = FC1.forward(inp)
+#     out = FC2.forward(out)
+#     
+#     loss = out - correct
+#     
+#     print(np.sum(loss))
+#     
+#     out = FC2.backprop(loss, 0.001)
+#     out = FC1.backprop(out, 0.001)    
+# =============================================================================
+    
+
+# =============================================================================
+# excel.write(inp, "INPUT")
+# excel.write(weights, "Weights")
+# excel.write(bias, "Bias")
+# excel.write(out, "OUTPUT")
+# 
+# excel.save()
+# =============================================================================
+
+
+
+
+
 
 
 

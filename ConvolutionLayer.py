@@ -8,8 +8,9 @@ import numpy as np
 
 class Conv3x3:
     
-    def __init__(self, nrOfFilters, inputShape, batchSize = 1, depth = 3):
+    def __init__(self, nrOfFilters, inputShape, batchSize = 1,optimizer = 'none',beta1 = 0.9, beta2 = 0.9, depth = 3):
 
+        self.optimizer = np.char.lower(optimizer)
         self.nrOfFilters = nrOfFilters
         self.depth = depth
         
@@ -27,6 +28,11 @@ class Conv3x3:
         self.out_dim_y = inputShape[-2] - 2
         
         self.out_shape = (inputShape[0], self.nrOfFilters, self.out_dim_y, self.out_dim_x)
+
+        self.VdW = np.zeros(self.W.shape)
+        
+        self.beta1 = beta1
+        self.beta2 = beta2
         
         self.updateCount = 0
         
@@ -135,16 +141,59 @@ class Conv3x3:
     def backprop(self, dLdOut, lRate):
         
         dLdOut = dLdOut.ravel().reshape(self.out_shape)
-        self.dLdW += self.calc_dLdW(dLdOut)
+        self.dLdW = self.calc_dLdW(dLdOut)
         
-        self.batchCount += 1
-        if(self.batchCount == self.batchSize):
-            self.updateCount += 1
+        
+        if(self.optimizer == 'none'):
+            self.W -= self.dLdW * lRate
+            
+        elif(self.optimizer == 'momentum'):
+            self.VdW = self.VdW * self.beta1 + (1 - self.beta1)*self.dLdW               
+            
+            self.W -= self.VdW * lRate
 
-            self.updateWeights(lRate)
-            self.batchCount = 0
+
+        elif(self.optimizer == 'rmsprop'):
+            self.VdW = self.VdW * self.beta2 + (1 - self.beta2)*np.power(self.dLdW,2)                   
+ 
+            self.W -= (self.dLdW * lRate) / np.sqrt(self.VdW)
+
+        elif(self.optimizer == 'adam'):
+            pass
+        
         
         return self.calc_dLdX(dLdOut)
+
+# =============================================================================
+# #2 layers
+# inputShape = (nr,d,y,x) = (2,1,6,6)
+# inp = np.arange(nr*d*y*x).reshape(inputShape)/100
+# conv1 = Conv3x3(2,inputShape,depth=1,optimizer = 'momentum')
+# 
+# conv2 = Conv3x3(3,(4,1,4,4),depth=1,optimizer = 'momentum')
+# 
+# out = conv1.forward(inp)
+# correct = conv2.forward(out)/2
+# 
+# 
+# #print("Output:\n",out)s
+# 
+# for i in range(300):
+#     out = conv1.forward(inp)
+#     out = conv2.forward(out)
+#     
+#     #print("out", out)
+#     
+#     loss = out - correct   
+#     print(i, np.sum(loss))
+# 
+#     #print("loss:", np.sum(loss**2)/np.size(loss))
+#     out = conv2.backprop(loss,0.005)
+#     out = conv1.backprop(out,0.005)
+# 
+# print("Success")
+# =============================================================================
+
 
 
 # =============================================================================
@@ -163,35 +212,6 @@ class Conv3x3:
 # back = conv.backprop(dLdOut, 0.1)
 # =============================================================================
 
-# =============================================================================
-# #2 layers
-# inputShape = (nr,d,y,x) = (2,1,6,6)
-# inp = np.arange(nr*d*y*x).reshape(inputShape)/100
-# conv1 = Conv3x3(2,inputShape,lRate=0.003,depth=1)
-# 
-# conv2 = Conv3x3(3,(4,1,4,4), lRate=0.003,depth=1)
-# 
-# out = conv1.forward(inp)
-# correct = conv2.forward(out)/2
-# 
-# 
-# #print("Output:\n",out)s
-# 
-# for i in range(5000):
-#     out = conv1.forward(inp)
-#     out = conv2.forward(out)
-#     
-#     #print("out", out)
-#     
-#     loss = out - correct   
-#     print(i, np.sum(loss))
-# 
-#     #print("loss:", np.sum(loss**2)/np.size(loss))
-#     out = conv2.backprop(loss)
-#     out = conv1.backprop(out)
-# 
-# print("Success")
-# =============================================================================
 
 # =============================================================================
 # print("1")
