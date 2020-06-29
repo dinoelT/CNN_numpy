@@ -12,6 +12,7 @@ Fully Conected Layer
 @author: Dinoel
 """
 import numpy as np
+import sparse
 
 class FC:
     '''
@@ -20,11 +21,11 @@ class FC:
     * momentum -> beta used
     '''
     
-    def __init__(self, nrInputs, nrOutputs, optimizer = 'none', beta1 = 0.9, beta2 = 0.01, batchSize = 1):
+    def __init__(self, nrInputs, nrOutputs, optimizer = 'none', beta1 = 0.9, beta2 = 0.999, batchSize = 1):
         
         self.batchSize = batchSize
-        self.optimizer = np.char.lower(optimizer)
-        
+        #self.optimizer = np.char.lower(optimizer)
+        self.optimizer = optimizer
         (self.nrOutputs, self.nrInputs) = (nrOutputs, nrInputs)
         
         self.W = np.random.randn(nrOutputs, nrInputs)/ np.sqrt(nrInputs/2)
@@ -45,6 +46,7 @@ class FC:
         
         self.beta1 = beta1
         self.beta2 = beta2
+        self.eps = 1/10**8
         
         self.iter_count = 1
         
@@ -57,29 +59,39 @@ class FC:
 
         return self.out   
     
+    
+    def sparse_dLdW(self, dLdOut):
+        inp = self.lastInput
+        (batchSize, nrInputs) = inp.shape
+
+        nrCol = self.nrOutputs
+        
+        row = np.arange(nrInputs * nrCol)
+        
+        column = np.repeat(np.arange(nrCol), nrInputs)
+
+        rowCol = np.array([row,column])
+
+        data = np.tile(inp, nrCol).flatten()
+
+        thirdDim = np.repeat(np.arange(batchSize), len(row))
+
+        rowCol = np.tile(rowCol, batchSize)
+        coords = np.array([thirdDim, *rowCol])
+        print(rowCol.shape, coords.shape)
+        x = sparse.COO(coords, data)
+        
+        dLdW = sparse.tensordot(x, dLdOut, axes = ([0,2],[0,1]))
+        return dLdW.reshape(self.W.shape)
+    
     #The function calculates the derivatives with respect to the dLdOut loss
-    def backprop(self, dLdOut, lr):
-        #from arrayToExcel import ArrayToExcel
-        
-        #excel = ArrayToExcel()
-        temp_dLdW = np.zeros((self.batchSize, self.W.size, dLdOut[0].size))
-        
-        step = self.nrInputs
-        #print("Last input:\n", self.lastInput)
-        for n in range(self.nrOutputs):
-             temp_dLdW[:,n*step:(n+1)*step, n] = self.lastInput
-        #print("temp_dLdW\n",temp_dLdW)
-        #excel.write(dLdOut,"dLdOut")
-        #excel.write(temp_dLdW[0],"temp_dLdW")
-        #excel.write(temp_dLdW[1])
-        self.dLdW = np.tensordot(temp_dLdW, dLdOut, axes = ([0,2],[0,1])).reshape(self.W.shape)
-        #print("dLdW:\n",self.dLdW)
-        #excel.write(self.dLdW, "dLdW")
+    def backprop(self, dLdOut, lr):        
+        self.dLdW = self.sparse_dLdW(dLdOut)
+
         self.dLdB = np.sum( np.dot( np.identity(self.nrOutputs) , dLdOut.T), axis = 1) 
-        #excel.write(self.dLdB, "dLdB")
         #print("dLdB:\n",self.dLdB)
         dLdX = np.tensordot(self.W, dLdOut, axes = (0,1)).T
-        #excel.save("fc_sm_text.xls")
+
         #Update values
             
         if(self.optimizer == 'none'):
@@ -97,8 +109,8 @@ class FC:
             self.SdW = self.SdW * self.beta2 + (1 - self.beta2)*np.power(self.dLdW,2)
             self.SdB = self.SdB * self.beta2 + (1 - self.beta2)*np.power(self.dLdB,2)                   
  
-            self.W -= (self.dLdW * lr) / np.sqrt(self.SdW)
-            self.B -= (self.dLdB * lr) / np.sqrt(self.SdB)
+            self.W -= (self.dLdW * lr) / (np.sqrt(self.SdW)+ self.eps)
+            self.B -= (self.dLdB * lr) / (np.sqrt(self.SdB)+ self.eps)
         
         elif(self.optimizer == 'adam'):
             self.VdW = self.VdW * self.beta1 + (1 - self.beta1)*self.dLdW
@@ -108,12 +120,16 @@ class FC:
             self.SdB = self.SdB * self.beta2 + (1 - self.beta2)*np.power(self.dLdB,2) 
             
             #Perform Bias Correction
-            self.VdW = self.VdW/(1 - self.beta1**self.iter_count)
-            self.VdB = self.VdB/(1 - self.beta1**self.iter_count)
+            self.VdW /= (1 - self.beta1**self.iter_count)
+            self.VdB /= (1 - self.beta1**self.iter_count)
 
-            self.SdW = self.SdW/(1 - self.beta1**self.iter_count)
-            self.SdB = self.SdB/(1 - self.beta1**self.iter_count)            
+            self.SdW /= (1 - self.beta2**self.iter_count)
+            self.SdB /= (1 - self.beta2**self.iter_count)            
             
+            self.W -= (self.VdW * lr) / (np.sqrt(self.SdW) + self.eps)
+            self.B -= (self.VdB * lr) / (np.sqrt(self.SdB) + self.eps) 
+            
+            self.iter_count +=1
             
         return dLdX
     
@@ -130,8 +146,19 @@ class FC:
         print("-----------------------------------")        
 
 # =============================================================================
-# from arrayToExcel import ArrayToExcel
+# #Big Inputs-Output values <<Laptop was blocked>>
+# fc = FC(56000,1000, batchSize = 10)
 # 
+# inp = np.random.randn(560000).reshape(10,56000) 
+# out = fc.forward(inp)
+# print(out.shape)
+# back = fc.backprop(out, 0.005)
+# =============================================================================
+
+
+
+
+# =============================================================================
 # #for a nn 4x6 inputs and 4x2 outputs
 # np.random.seed(1)
 # 
@@ -147,7 +174,7 @@ class FC:
 # correct[1] = out[1]*2
 # correct[2] = out[2]*0.25
 # 
-# for i in range(10000):
+# for i in range(1):
 #     out = FC1.forward(inp)
 #     out = FC2.forward(out)
 #     
@@ -156,7 +183,7 @@ class FC:
 #     print(np.sum(loss))
 #     
 #     out = FC2.backprop(loss, 0.001)
-#     out = FC1.backprop(out, 0.001)    
+#     #out = FC1.backprop(out, 0.001)    
 # =============================================================================
     
 
