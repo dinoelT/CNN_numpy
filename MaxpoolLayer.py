@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Feb 23 23:16:10 2020
-
-@author: Dinoel
+    Implementation of Maxpool Layer
 """
 
 import numpy as np
@@ -10,6 +8,7 @@ import numpy as np
 class Maxpool:
     
     def iter2x2_regions(self,img):
+        #This function returns the 2x2 region from the image and the y,x coords
         (*_, yDim, xDim) = img.shape
         
         newH = yDim//2
@@ -29,6 +28,8 @@ class Maxpool:
                 yield y,x, region
                 
     def forward(self, inputVal):
+        #This function iterates over the 2x2 regions in the input image and
+        #saves the max element into a new output matrix, that it returns
         self.inputVal = inputVal
         
         (*_, depthDim, yDim, xDim) = inputVal.shape
@@ -42,7 +43,10 @@ class Maxpool:
         return out
     
     def backprop(self, dLdOut):
-        
+        #This function iterates over the 2x2 image regions
+        #   [ 0  1  4]   It saves the max value  [0 0 4]
+        #   [ 2  1  1]   other values being      [0 0 0]
+        #   [ 1  0  1]   equal to zero           [0 0 0]
         dLdInput = np.zeros(self.inputVal.shape)
         
         for i, img in enumerate(self.inputVal):

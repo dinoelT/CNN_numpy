@@ -1,8 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+    Implementation of Convolution layer
+"""
+
 import numpy as np
 import sparse
 
 class Conv:
-    
+    '''
+    beta1 - constant for momentum and adam optimizers 
+    beta2 - constant for rmsprop and adam optimizer
+    '''
     def __init__(self, nrOfFilters, inputShape, batchSize = 1,optimizer = 'none',beta1 = 0.9, beta2 = 0.999, depth = 3, filterSize = 3,stride=1,isFirstLayer = 1):
 
         self.optimizer = np.char.lower(optimizer)
@@ -13,7 +21,7 @@ class Conv:
         #Initialize filters
         #See Kaiming Initialization        
         self.W = np.random.randn(nrOfFilters, self.depth, self.filtS, self.filtS) 
-        self.W /= np.sqrt((filterSize**2)*self.depth/2)
+        self.W /= np.sqrt(((filterSize*self.depth)**2) /2)
 
         self.dLdW = np.zeros(self.W.shape)
         
@@ -43,9 +51,11 @@ class Conv:
         self.isFirstLayer = isFirstLayer
         
     def forward(self, inputValue):
-        
+        '''
+        This function convolves the image regions with the filter 
+        '''
         (filterNr, filter_depth, filter_y, filter_x) = self.W.shape
-        #print("Filter shape:", self.W.shape)
+
         if(inputValue.ndim == 3):    
             inputValue = np.expand_dims(inputValue, 0)
         (nrImages, img_depth, img_y, img_x) = inputValue.shape
@@ -55,13 +65,13 @@ class Conv:
         out = np.zeros(self.out_shape)
         reg_size = self.W.shape[-1]
         for n, image in enumerate(inputValue):
-            for f,filter in enumerate(self.W):
+            for f,filt in enumerate(self.W):
                 if(self.stride != 1):
                     for y,x, region in self.iter_regions_stride(image,reg_size):
-                        out[n,f,y,x] = np.sum(np.multiply(region, filter))                    
+                        out[n,f,y,x] = np.sum(np.multiply(region, filt))                    
                 else:
                     for y,x, region in self.iter_regions(image, reg_size):
-                        out[n,f,y,x] = np.sum(np.multiply(region, filter))
+                        out[n,f,y,x] = np.sum(np.multiply(region, filt))
         
         (nr, d, y,x) = self.out_shape  
           
@@ -69,11 +79,12 @@ class Conv:
         return out
         
     def iter_regions_stride(self, img,reg_size):
+        '''
+        This function iterates over the image regions with stride 
+        '''
         (*_, yDim, xDim) = img.shape
         
         # OutDim = (imgDim - fDim)/s + 1; s=1, fDim=3 => OutDim = imgDim-2
-        
-        
         #Output dimensions
         dim_x = self.out_dim_x
         dim_y = self.out_dim_y
@@ -88,6 +99,9 @@ class Conv:
 
     
     def iter_regions(self, img, reg_size, fw = 1):
+        '''
+        This function iterates over the image regions with no stride 
+        '''
         (*_, yDim, xDim) = img.shape
         
         # OutDim = (imgDim - fDim)/s + 1; s=1, fDim=3 => OutDim = imgDim-2
@@ -96,21 +110,27 @@ class Conv:
             #Output dimensions
             dim_x = self.out_dim_x
             dim_y = self.out_dim_y
+            reg_size_y = reg_size_x = reg_size
         else:
             #Filter dimensions
             dim_x = self.filtS
             dim_y = self.filtS
+            reg_size_y, reg_size_x = reg_size
             
         for y in range(dim_y):
             for x in range(dim_x):
                 if(img.ndim == 3):   
-                    region = img[:, y:y+reg_size , x:x+reg_size]
+                    region = img[:, y:y+reg_size_y , x:x+reg_size_x]
                     
                 if(img.ndim == 2):
-                    region = img[y:y+reg_size , x:x+reg_size]
+                    region = img[y:y+reg_size_y , x:x+reg_size_x]
                 yield y,x, region
     
     def calc_dLdW_stride(self, dLdOut):
+        '''
+        This function calculates the gradient of the Loss with respect to the
+        weights W, in the case where the stride was used
+        '''
         temp_dLdW = np.zeros(self.W.shape)
         
         (filt_y, filt_x) = self.W.shape[-2:]
@@ -118,31 +138,36 @@ class Conv:
         
         x_range = np.arange(0,input_x - filt_x +1, self.stride)
         y_range = np.arange(0,input_y - filt_y +1, self.stride)
-        #print(x_range, y_range)
+
         for f in range(self.nrOfFilters):    
             for i, img in enumerate(self.lastInput):
-                #print(img.shape)
                 for y in range(filt_y):
                     for x in range(filt_x):
-                        #print((img[:,y_range+y][:,:,x_range+x]))
                         temp_dLdW[f,:,y,x] += np.sum(np.multiply(img[:,y_range+y][:,:,x_range+x], dLdOut[i,f]), axis = (1,2))
         return temp_dLdW
         
     def calc_dLdW(self, dLdOut):
-     
+        '''
+        This function calculates the gradient of the Loss with respect to the
+        weights W, in the case where NO stride was used
+        '''
         temp_dLdW = np.zeros(self.W.shape)
+        reg_size = dLdOut.shape[-2:]
 
-        reg_size = dLdOut.shape[-1]
-        
         for f in range(self.nrOfFilters):    
             for i, img in enumerate(self.lastInput):
-                for y, x, region in (self.iter_regions(img, reg_size,fw=0)):                    
+                for y, x, region in (self.iter_regions(img, reg_size,fw=0)):                
                     temp_dLdW[f,:,y,x] += np.sum(np.multiply(region, dLdOut[i,f]), axis = (1,2))
+        
         return temp_dLdW
     
     
     
     def calc_dOutdX_COO(self):
+        '''
+        This function compiles the sparse matrix of the derivatives of the 
+        output with respect to the input X
+        '''
         (nrFilters, filterDepth, filter_y, filter_x) = self.W.shape
         
         (*_, img_y, img_x) = self.lastInput.shape
@@ -193,7 +218,11 @@ class Conv:
 
         
         
-    def calc_dLdX(self, dLdOut):                   
+    def calc_dLdX(self, dLdOut):       
+        '''
+        This function calculates the derivatives of the Loss with respect to 
+        the input X
+        '''            
         dOutdX = self.calc_dOutdX_COO()
         dOutdX = np.transpose(dOutdX, (0,1,3,2))
 
@@ -212,6 +241,11 @@ class Conv:
     
         
     def backprop(self, dLdOut, lRate):
+        '''
+        This function updates the weights W (with the option of an optimizer)
+        If this is not the first layer, it computes the gradient of the loss 
+            with respect to the input X
+        '''
         dLdOut = dLdOut.ravel().reshape(self.out_shape)    
         
         if(self.stride != 1):
@@ -251,6 +285,17 @@ class Conv:
         if(self.isFirstLayer != 1):
             return self.calc_dLdX(dLdOut)
 
+# =============================================================================
+# conv2 = Conv(10, (100, 1, 35, 47), batchSize=1, depth = 1,optimizer = 'momentum', filterSize = 4, stride = 1, isFirstLayer = 0)
+# 
+# img = np.random.randn(100 * 35 *47).reshape(100, 1, 35, 47)
+# 
+# 
+# out = conv2.forward(img)
+# print("Finished forward")
+# back = conv2.backprop(out, 0.001)
+# print("Finished backprop")
+# =============================================================================
 
 # =============================================================================
 # np.random.seed(0)

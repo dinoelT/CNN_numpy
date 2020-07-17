@@ -1,19 +1,29 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat May  2 10:38:38 2020
-
-@author: Dinoel
+    Implementation of Dropout layer
 """
 
 import numpy as np
 #from FCLayer import FC
 
 class Dropout:
-    
-    def forward(self, x, keep_prob):
-        dropMatrix = np.random.rand(*x.shape) < keep_prob
+
+    def __init__(self, keep_prob):
+        self.keep_prob = keep_prob
         
-        return np.multiply(x, dropMatrix) / keep_prob
+    def forward(self, x):
+        self.dropMatrix = np.random.rand(*x.shape) < self.keep_prob
+        return np.multiply(x, self.dropMatrix) / self.keep_prob
+
+    def backprop(self, dLdOut):
+        return np.multiply(dLdOut, self.dropMatrix) / self.keep_prob   
+# =============================================================================
+#    def forward(self, x, keep_prob):
+#        dropMatrix = np.random.rand(*x.shape) < keep_prob
+#        
+#        return np.multiply(x, dropMatrix) / keep_prob
+# =============================================================================
+
 
 # =============================================================================
 # fc = FC(25,3)

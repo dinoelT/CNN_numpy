@@ -1,26 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb 21 17:52:09 2020
-
-@author: Dinoel
+    Implementation of Softmax layer
 """
 import numpy as np
 
 class Softmax:       
         
     def forward(self, inputArray):
+        ''' 
+        This function calculates the exponential of all inputs and the sum of
+        the exponentials. Finally, it returns the ratio of the exponential
+        of the inputs and the sum of the exponentials
+        '''
         #Calculate the exp for each element
         self.inputArray = np.exp(inputArray)
-        #print("Exponent:", self.inputArray)
-        #print("sm exp:", self.inputArray)
+
         #Calculate the Sum of the exp for each row
         self.lastTotal = np.sum(self.inputArray, axis = 1)
-        #print("\nsm totals:", self.lastTotal)
         self.output = self.inputArray/self.lastTotal[:, None]
-        #print("SM output:",self.output)
+
         return self.output
             
     def backprop(self, dLdOut):
+        '''
+        This function calculates the gradients for each of the outputs
+        '''
         (corr_row, corr_col) = np.nonzero(dLdOut)
 
         # Sum of all exponential terms
@@ -34,24 +38,12 @@ class Softmax:
         dLdInput = -self.inputArray.T * correct/S2
         # Calculate where k=c
         dLdInput[corr_col, corr_row] = correct * (S - correct)/S2
-        #return dLdInput   
+        
         dLdInput = - dLdInput * 1/self.output[corr_row, corr_col]
-
         dLdInput = dLdInput.T
 
         return dLdInput
 
-def CrossEntropyLossBackprop(input , correctLabel):
-    loss = np.zeros(input.shape)
-    row = np.arange(len(input))
-    loss[row, correctLabel] = -1/input[row, correctLabel]
-    return loss
-
-def CrossEntropyLossForward(out , correctLabel):
-    row = np.arange(len(out))
-    loss = -1/np.log(out[row, correctLabel])
-    print(loss)
-    return loss    
 
 
 

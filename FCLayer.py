@@ -1,24 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May  3 10:43:07 2020
-
-@author: Dinoel
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Feb 26 19:56:16 2020
-Fully Conected Layer 
-@author: Dinoel
+    Implementation of: 
+    Fully Connected layer
+    Batch gradient descent
+    Optimizers: momentum, rmsprop, adam
 """
 import numpy as np
 import sparse
 
 class FC:
     '''
-    beta - constant for optimizer updates
-    * none -> beta not used
-    * momentum -> beta used
+    beta1 - constant for momentum and adam optimizers 
+    beta2 - constant for rmsprop and adam optimizer
     '''
     
     def __init__(self, nrInputs, nrOutputs, optimizer = 'none', beta1 = 0.9, beta2 = 0.999, batchSize = 1):
@@ -52,7 +45,9 @@ class FC:
         
         
     def forward(self, inputArray):
-
+        '''
+        This function multiplies the Weights with the input image
+        '''
         self.lastInput = inputArray
         
         self.out = np.tensordot(self.W, inputArray, axes = (1,1)).T + self.B      
@@ -61,6 +56,9 @@ class FC:
     
     
     def sparse_dLdW(self, dLdOut):
+        '''
+        This function compiles the dLdW sparse matrix
+        '''
         inp = self.lastInput
         (batchSize, nrInputs) = inp.shape
 
@@ -78,18 +76,21 @@ class FC:
 
         rowCol = np.tile(rowCol, batchSize)
         coords = np.array([thirdDim, *rowCol])
-        print(rowCol.shape, coords.shape)
         x = sparse.COO(coords, data)
         
         dLdW = sparse.tensordot(x, dLdOut, axes = ([0,2],[0,1]))
         return dLdW.reshape(self.W.shape)
     
     #The function calculates the derivatives with respect to the dLdOut loss
-    def backprop(self, dLdOut, lr):        
+    def backprop(self, dLdOut, lr): 
+        ''' 
+        This function:
+            1) Computes the gradient of the Loss with respect to W
+            2) Updates the weights matrix W(with the option of an optimizer)
+        '''
         self.dLdW = self.sparse_dLdW(dLdOut)
 
         self.dLdB = np.sum( np.dot( np.identity(self.nrOutputs) , dLdOut.T), axis = 1) 
-        #print("dLdB:\n",self.dLdB)
         dLdX = np.tensordot(self.W, dLdOut, axes = (0,1)).T
 
         #Update values
@@ -147,12 +148,14 @@ class FC:
 
 # =============================================================================
 # #Big Inputs-Output values <<Laptop was blocked>>
-# fc = FC(56000,1000, batchSize = 10)
+# fc1 = FC(35200, 100, batchSize=10,optimizer = 'momentum')
 # 
-# inp = np.random.randn(560000).reshape(10,56000) 
-# out = fc.forward(inp)
+# inp = np.random.randn(352000).reshape(10,35200) 
+# out = fc1.forward(inp)
 # print(out.shape)
-# back = fc.backprop(out, 0.005)
+# back = fc1.backprop(out, 0.005)
+# print(type(back))
+# print(back.shape)
 # =============================================================================
 
 

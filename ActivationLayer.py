@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr 22 20:58:21 2020
-
-@author: Dinoel
+    Implementation of the Activation Layer(Non-Liniarity)
 """
 import numpy as np
 
